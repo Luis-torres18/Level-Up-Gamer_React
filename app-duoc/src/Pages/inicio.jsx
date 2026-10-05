@@ -1,11 +1,12 @@
 import Header from "../Components/Header";
+import Footer from "../Components/Footer";
 import '/src/index.css'
 
 function inicio() {
 
     return <>
 
-        <Header></Header>
+        <Header/>
 
         <main>
             <section class="hero-section">
@@ -131,12 +132,9 @@ function inicio() {
                 </article>
             </div>
             </section>
-
-            <div class="footer-bottom">
-            <p>&copy; 2026 Level-Up Gamer - Todos los derechos reservados.</p>
-            <p>Desarrollo Web - Duoc UC</p>
-            </div>
         </main>
+
+        <Footer/>
     </>
 }
 
