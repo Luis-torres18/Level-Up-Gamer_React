@@ -1,3 +1,4 @@
+import Footer from "../Components/Footer";
 import Header from "../Components/Header";
 import '/src/index.css'
 
@@ -5,39 +6,41 @@ function carrito() {
     
     return <>
 
-        <header></header>
+        <Header/>
 
-        <main class="cart-main">
-            <h1 style="font-family: var(--font-title); margin-bottom: 2rem; font-size: 2rem;">MI CARRITO DE COMPRAS</h1>
+        <main className="cart-main">
+            <h1>MI CARRITO DE COMPRAS</h1>
 
-            <div class="cart-layout">
+            <div className="cart-layout">
             
-            <section class="cart-items-container" id="cart-items-wrapper">
+            <section className="cart-items-container" id="cart-items-wrapper">
             
             </section>
 
-            <aside class="cart-summary">
+            <aside className="cart-summary">
                 <h2>RESUMEN DEL PEDIDO</h2>
                 
-                <div class="summary-row">
+                <div className="summary-row">
                 <span>Subtotal</span>
                 <span id="cart-subtotal">$0</span>
                 </div>
 
-                <div class="summary-row">
+                <div className="summary-row">
                 <span>Descuento</span>
                 <span id="cart-discount">$0</span>
                 </div>
 
-                <div class="summary-total">
+                <div className="summary-total">
                 <span>TOTAL:</span>
                 <span id="cart-total">$0</span>
                 </div>
 
-                <button type="button" id="btn-pagar" class="btn-checkout" style="margin-top: 1.5rem;">Pagar Pedido</button>
+                <button type="button" id="btn-pagar" className="btn-checkout">Pagar Pedido</button>
             </aside>
             </div>
         </main>
+
+        <Footer/>
     </>
 }
 

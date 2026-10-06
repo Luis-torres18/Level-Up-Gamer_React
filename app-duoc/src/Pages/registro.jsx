@@ -1,3 +1,4 @@
+import Footer from "../Components/Footer";
 import Header from "../Components/Header";
 import '/src/index.css'
 
@@ -5,7 +6,7 @@ function registro(){
 
     return<>
 
-        <header></header>
+        <Header/>
 
         <main class="form-page-main">
             <section class="form-wrapper">
@@ -88,6 +89,8 @@ function registro(){
             </form>
             </section>
         </main>
+
+        <Footer/>
     </>
 }
 
