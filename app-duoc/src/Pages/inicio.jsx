@@ -1,12 +1,8 @@
-import Header from "../Components/Header";
-import Footer from "../Components/Footer";
 import '/src/index.css'
 
-function inicio() {
+function Inicio() {
 
     return <>
-
-        <Header/>
 
         <main>
             <section class="hero-section">
@@ -134,8 +130,7 @@ function inicio() {
             </section>
         </main>
 
-        <Footer/>
     </>
 }
 
-export default inicio;
+export default Inicio;

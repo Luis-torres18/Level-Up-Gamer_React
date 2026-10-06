@@ -1,12 +1,8 @@
-import Footer from "../Components/Footer";
-import Header from "../Components/Header";
 import '/src/index.css'
 
-function carrito() {
+function Carrito() {
     
     return <>
-
-        <Header/>
 
         <main className="cart-main">
             <h1>MI CARRITO DE COMPRAS</h1>
@@ -40,8 +36,7 @@ function carrito() {
             </div>
         </main>
 
-        <Footer/>
     </>
 }
 
-export default carrito;
+export default Carrito;

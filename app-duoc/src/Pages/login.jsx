@@ -1,12 +1,10 @@
-import Footer from "../Components/Footer";
-import Header from "../Components/Header";
+import { Link, useParams } from "react-router";
+
 import '/src/index.css'
 
-function login(){
+function Login(){
 
     return<>
-    
-        <Header/>
 
         <main className="form-page-main">
             <section className="form-wrapper">
@@ -33,14 +31,13 @@ function login(){
                 <button type="submit" className="btn-submit">Ingresar a mi cuenta</button>
 
                 <p className="form-footer-link">
-                ¿Aún no tienes cuenta? <a href="registro.html">Crea una cuenta aquí</a>
+                ¿Aún no tienes cuenta? <Link to="/Registro">Crea una cuenta aquí</Link>
                 </p>
             </form>
             </section>
         </main>
 
-        <Footer/>
     </>
 }
 
-export default login;
+export default Login;
