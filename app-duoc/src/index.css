@@ -364,6 +364,58 @@ body {
   min-height: 1.1rem;
 }
 
+.form-group input.input-error,
+.form-group select.input-error {
+  border-color: var(--danger-color);
+}
+
+.form-group input.input-error:focus,
+.form-group select.input-error:focus {
+  border-color: var(--danger-color);
+  box-shadow: 0 0 0 2px rgba(255, 71, 87, 0.2);
+}
+
+.form-alert {
+  font-size: 0.85rem;
+  padding: 0.75rem 1rem;
+  border-radius: 4px;
+  margin-bottom: 1.3rem;
+  border: 1px solid transparent;
+}
+
+.form-alert-success {
+  color: #b6ffb0;
+  background-color: rgba(57, 255, 20, 0.08);
+  border-color: rgba(57, 255, 20, 0.4);
+}
+
+.form-alert-error {
+  color: #ffb3b8;
+  background-color: rgba(255, 71, 87, 0.08);
+  border-color: rgba(255, 71, 87, 0.4);
+}
+
+.auth-user {
+  color: var(--neon-green);
+  font-weight: 500;
+  margin-right: 0.4rem;
+}
+
+.auth-logout {
+  background: none;
+  border: none;
+  color: var(--text-main);
+  font-family: var(--font-body);
+  font-size: 0.85rem;
+  cursor: pointer;
+  padding: 0;
+  text-decoration: underline;
+}
+
+.auth-logout:hover {
+  color: var(--danger-color);
+}
+
 .form-row {
   display: grid;
   grid-template-columns: 1fr 1fr;
