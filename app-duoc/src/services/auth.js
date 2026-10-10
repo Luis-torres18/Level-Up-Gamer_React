@@ -1,8 +1,3 @@
-// Servicio de autenticación basado en localStorage.
-// No hay backend en el proyecto, por lo que las cuentas se guardan en el navegador.
-// NOTA: el hash es una ofuscación simple para una demo académica; en producción
-// la validación y el hashing de contraseñas deben realizarse en el servidor.
-
 const USERS_KEY = 'lug_usuarios';
 const SESSION_KEY = 'lug_sesion';
 const AUTH_EVENT = 'lug-auth-change';
@@ -30,7 +25,6 @@ function writeUsers(users) {
   localStorage.setItem(USERS_KEY, JSON.stringify(users));
 }
 
-// Elimina la contraseña antes de exponer un usuario a la interfaz.
 function toPublicUser(user) {
   const publicUser = { ...user };
   delete publicUser.password;
@@ -43,6 +37,20 @@ function notifyChange() {
 
 function normalizeEmail(email) {
   return String(email ?? '').trim().toLowerCase();
+}
+
+export function esCorreoDuoc(correo) {
+  return /@(duoc|duocuc)\.cl$/i.test(normalizeEmail(correo));
+}
+
+export function esCorreoAdmin(correo) {
+  return normalizeEmail(correo).endsWith('@duocuc.cl');
+}
+
+// Indica si la sesión actual pertenece a un administrador.
+export function esAdmin() {
+  const session = getSession();
+  return Boolean(session && esCorreoAdmin(session.correo));
 }
 
 export function findUserByEmail(email) {
@@ -67,7 +75,8 @@ export function registerUser({ nombre, correo, contrasena, telefono, region, com
     telefono: telefono.trim(),
     region,
     comuna,
-    descuentoDuoc: normalizedEmail.endsWith('@duoc.cl'),
+    descuentoDuoc: esCorreoDuoc(normalizedEmail),
+    esAdmin: esCorreoAdmin(normalizedEmail),
     creadoEl: new Date().toISOString(),
   };
 
@@ -109,7 +118,6 @@ export function logout() {
   notifyChange();
 }
 
-// Permite que componentes (ej: Header) reaccionen a login/logout.
 export function subscribe(callback) {
   window.addEventListener(AUTH_EVENT, callback);
   window.addEventListener('storage', callback);

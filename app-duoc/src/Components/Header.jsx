@@ -1,13 +1,15 @@
 import { useEffect, useState } from 'react';
 import { Link, NavLink } from 'react-router';
+import { useSyncExternalStore } from 'react';
 
-import { getSession, logout, subscribe } from '../services/auth';
+import { getSession, logout, subscribe, esCorreoAdmin } from '../services/auth';
+import { contarCarrito, subscribeCarrito } from '../services/carrito';
 
 function Header() {
   const [usuario, setUsuario] = useState(getSession());
+  const totalCarrito = useSyncExternalStore(subscribeCarrito, contarCarrito);
 
   useEffect(() => {
-    // Mantiene el header sincronizado cuando se inicia o cierra sesión.
     const unsubscribe = subscribe(() => setUsuario(getSession()));
     return unsubscribe;
   }, []);
@@ -32,6 +34,9 @@ function Header() {
               <Link to="/Inicio#catalogo">Productos</Link>
             </li>
             <NavLink to="/Carrito">Carrito</NavLink>
+            {esCorreoAdmin(usuario?.correo) && (
+              <NavLink to="/#admin-productos">Administración</NavLink>
+            )}
           </ul>
         </nav>
 
@@ -52,7 +57,7 @@ function Header() {
             )}
           </div>
           <NavLink to="/Carrito" className="cart-button cart-count">
-            Carrito (0)
+            Carrito ({totalCarrito})
           </NavLink>
         </div>
       </div>

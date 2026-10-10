@@ -1,6 +1,3 @@
-// Validaciones de formularios de autenticación.
-// Cada función retorna un mensaje de error, o cadena vacía si el valor es válido.
-
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
 const NOMBRE_REGEX = /^[A-Za-zÀ-ÖØ-öø-ÿÑñ\s'.-]+$/;
 const TELEFONO_REGEX = /^(\+?56)?\s?9\s?\d{4}\s?\d{4}$/;

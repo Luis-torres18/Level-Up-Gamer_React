@@ -1,136 +1,289 @@
-import '/src/index.css'
+import { useEffect, useRef, useState } from 'react';
+import '/src/index.css';
+
+import { getSession, esCorreoAdmin } from '../services/auth';
+import {
+  crearProducto,
+  actualizarProducto,
+  eliminarProducto,
+  getProductos,
+  subscribeProductos,
+  formatearPrecio,
+} from '../services/productos';
+import { agregarAlCarrito } from '../services/carrito';
+
+const CATEGORIAS_SUGERIDAS = [
+  'Juegos de Mesa',
+  'Accesorios',
+  'Consolas',
+  'Computadores',
+  'Sillas Gamers',
+  'Mouse',
+  'Teclados',
+  'Audífonos',
+];
+
+const ESTADO_INICIAL_FORM = {
+  categoria: '',
+  nombre: '',
+  descripcion: '',
+  imagen: '',
+  precio: '',
+};
 
 function Inicio() {
+  const sesion = getSession();
+  const esAdmin = esCorreoAdmin(sesion?.correo);
 
-    return <>
+  const [productos, setProductos] = useState(getProductos);
+  const [form, setForm] = useState(ESTADO_INICIAL_FORM);
+  const [editandoId, setEditandoId] = useState(null);
+  const [error, setError] = useState('');
+  const [mensaje, setMensaje] = useState('');
+  const toastTimer = useRef(null);
 
-        <main>
-            <section class="hero-section">
-            <div class="hero-container">
-                <div class="hero-content">
-                <h1>ELEVA TU NIVEL <span>GAMER</span> AL MÁXIMO</h1>
-                <p>Equipamiento de alto rendimiento, consolas de última generación y juegos de mesa clásicos con envíos rápidos y seguros a todo Chile.</p>
-                <a href="#catalogo" class="btn-cta">Ver Productos</a>
+  useEffect(() => subscribeProductos(() => setProductos(getProductos())), []);
+
+  // Muestra una notificación emergente que se oculta sola a los 2 segundos.
+  const mostrarToast = (texto) => {
+    if (toastTimer.current) clearTimeout(toastTimer.current);
+    setMensaje(texto);
+    toastTimer.current = setTimeout(() => setMensaje(''), 2000);
+  };
+
+  // Limpia el temporizador si el componente se desmonta.
+  useEffect(() => () => clearTimeout(toastTimer.current), []);
+
+  const handleChange = (event) => {
+    const { name, value } = event.target;
+    setForm((prev) => ({ ...prev, [name]: value }));
+    if (error) setError('');
+  };
+
+  const resetFormulario = () => {
+    setForm(ESTADO_INICIAL_FORM);
+    setEditandoId(null);
+    setError('');
+  };
+
+  const handleSubmit = (event) => {
+    event.preventDefault();
+
+    const resultado = editandoId
+      ? actualizarProducto(editandoId, form)
+      : crearProducto(form);
+
+    if (!resultado.ok) {
+      setError(resultado.error);
+      return;
+    }
+
+    mostrarToast(
+      editandoId
+        ? `Producto "${resultado.producto.nombre}" actualizado correctamente.`
+        : `Producto "${resultado.producto.nombre}" agregado al catálogo.`,
+    );
+    resetFormulario();
+  };
+
+  const handleEditar = (producto) => {
+    setEditandoId(producto.id);
+    setError('');
+    setForm({
+      categoria: producto.categoria,
+      nombre: producto.nombre,
+      descripcion: producto.descripcion,
+      imagen: producto.imagen,
+      precio: String(producto.precio),
+    });
+    document.getElementById('admin-productos')?.scrollIntoView({ behavior: 'smooth' });
+  };
+
+  const handleEliminar = (producto) => {
+    if (!window.confirm(`¿Eliminar "${producto.nombre}" del catálogo?`)) return;
+    const resultado = eliminarProducto(producto.id);
+    if (!resultado.ok) {
+      setError(resultado.error);
+      return;
+    }
+    if (editandoId === producto.id) resetFormulario();
+    mostrarToast(`Producto "${producto.nombre}" eliminado.`);
+  };
+
+  const handleAgregarAlCarrito = (producto) => {
+    agregarAlCarrito(producto);
+    mostrarToast(`"${producto.nombre}" se agregó al carrito.`);
+  };
+
+  return (
+    <main>
+      <section className="hero-section">
+        <div className="hero-container">
+          <div className="hero-content">
+            <h1>
+              ELEVA TU NIVEL <span>GAMER</span> AL MÁXIMO
+            </h1>
+            <p>
+              Equipamiento de alto rendimiento, consolas de última generación y juegos de
+              mesa clásicos con envíos rápidos y seguros a todo Chile.
+            </p>
+            <a href="#catalogo" className="btn-cta">
+              Ver Productos
+            </a>
+          </div>
+        </div>
+      </section>
+
+      {mensaje && (
+        <div className="toast" role="status" aria-live="polite">
+          {mensaje}
+        </div>
+      )}
+
+      <section id="catalogo" className="catalog-section">
+        <div className="section-header">
+          <h2>CATÁLOGO DESTACADO</h2>
+          <p>Equípate con los favoritos de nuestra comunidad</p>
+        </div>
+
+        <div className="products-grid">
+          {productos.map((producto) => (
+            <article className="product-card" key={producto.id}>
+              <figure>
+                <img src={producto.imagen} alt={producto.nombre} />
+              </figure>
+              <span className="product-tag">{producto.categoria}</span>
+              <h3 className="product-title">{producto.nombre}</h3>
+              <p className="product-desc">{producto.descripcion}</p>
+              <div className="product-footer">
+                <span className="product-price">{formatearPrecio(producto.precio)}</span>
+                <button
+                  type="button"
+                  className="btn-add-cart"
+                  onClick={() => handleAgregarAlCarrito(producto)}
+                >
+                  Añadir
+                </button>
+              </div>
+
+              {esAdmin && (
+                <div className="product-admin-actions">
+                  <button
+                    type="button"
+                    className="btn-edit"
+                    onClick={() => handleEditar(producto)}
+                  >
+                    Editar
+                  </button>
+                  <button
+                    type="button"
+                    className="btn-delete"
+                    onClick={() => handleEliminar(producto)}
+                  >
+                    Eliminar
+                  </button>
                 </div>
+              )}
+            </article>
+          ))}
+        </div>
+      </section>
+
+      {esAdmin && (
+        <section id="admin-productos" className="admin-panel">
+          <div className="section-header">
+            <h2>PANEL DE ADMINISTRACIÓN</h2>
+            <p>Agrega, actualiza o elimina productos del catálogo</p>
+          </div>
+
+          <form className="admin-form" onSubmit={handleSubmit} noValidate>
+            {error && <p className="form-alert form-alert-error">{error}</p>}
+
+            <div className="form-row">
+              <div className="form-group">
+                <label htmlFor="admin-categoria">Categoría</label>
+                <input
+                  type="text"
+                  id="admin-categoria"
+                  name="categoria"
+                  list="lista-categorias"
+                  placeholder="Ej: Consolas"
+                  value={form.categoria}
+                  onChange={handleChange}
+                />
+                <datalist id="lista-categorias">
+                  {CATEGORIAS_SUGERIDAS.map((categoria) => (
+                    <option key={categoria} value={categoria} />
+                  ))}
+                </datalist>
+              </div>
+
+              <div className="form-group">
+                <label htmlFor="admin-nombre">Nombre</label>
+                <input
+                  type="text"
+                  id="admin-nombre"
+                  name="nombre"
+                  placeholder="Ej: Nintendo Switch 2"
+                  value={form.nombre}
+                  onChange={handleChange}
+                />
+              </div>
             </div>
-            </section>
-        
-            <section id="catalogo" class="catalog-section">
-            <div class="section-header">
-                <h2>CATÁLOGO DESTACADO</h2>
-                <p>Equípate con los favoritos de nuestra comunidad</p>
+
+            <div className="form-group">
+              <label htmlFor="admin-descripcion">Descripción</label>
+              <textarea
+                id="admin-descripcion"
+                name="descripcion"
+                placeholder="Breve descripción del producto"
+                value={form.descripcion}
+                onChange={handleChange}
+              />
             </div>
 
-            <div class="products-grid">
+            <div className="form-row">
+              <div className="form-group">
+                <label htmlFor="admin-imagen">Imagen (link)</label>
+                <input
+                  type="url"
+                  id="admin-imagen"
+                  name="imagen"
+                  placeholder="https://ejemplo.com/imagen.jpg"
+                  value={form.imagen}
+                  onChange={handleChange}
+                />
+              </div>
 
-                <article class="product-card">
-                <figure>
-                    <img src="https://devirinvestments.s3.eu-west-1.amazonaws.com/img/catalog/product/8436017220100-1200-frontflat.jpg" alt="Juego de Mesa Catan"/>
-                </figure>
-                <span class="product-tag">Juegos de Mesa</span>
-                <h3 class="product-title">Catan</h3>
-                <p class="product-desc">Clásico juego de estrategia para colonizar la isla de Catan (3-4 jugadores).</p>
-                <div class="product-footer">
-                    <span class="product-price">$29.990</span>
-                    <button class="btn-add-cart" onclick="agregarProductoAlCarrito('JM001')">Añadir</button>
-                </div>
-                </article>
-
-                <article class="product-card">
-                <figure>
-                    <img src="https://www.geekz.cl/web/image/product.template/21455/image" alt="Juego de Mesa Carcassonne"/>
-                </figure>
-                <span class="product-tag">Juegos de Mesa</span>
-                <h3 class="product-title">Carcassonne</h3>
-                <p class="product-desc">Coloca losetas y domina fortalezas medievales con tu estrategia.</p>
-                <div class="product-footer">
-                    <span class="product-price">$24.990</span>
-                    <button class="btn-add-cart" onclick="agregarProductoAlCarrito('JM002')">Añadir</button>
-                </div>
-                </article>
-
-                <article class="product-card">
-                <figure>
-                    <img src="https://i5.walmartimages.com/seo/Microsoft-Xbox-One-Bluetooth-Wireless-Controller-Black_b30e1557-556d-4638-a692-7b42cb425b52_1.3d21d0fb85ffc29ebc3435b2d1bd3d75.jpeg" alt="Controlador Inalámbrico Xbox Series X"/>
-                </figure>
-                <span class="product-tag">Accesorios</span>
-                <h3 class="product-title">Control Xbox Series X</h3>
-                <p class="product-desc">Agarre texturizado y precisión inalámbrica para Xbox y PC.</p>
-                <div class="product-footer">
-                    <span class="product-price">$59.990</span>
-                    <button class="btn-add-cart" onclick="agregarProductoAlCarrito('AC001')">Añadir</button>
-                </div>
-                </article>
-
-                <article class="product-card">
-                <figure>
-                    <img src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSdO6mRCcRglH7n3EMSCivY3XAlU0QezZArTzefhyhxrnk54EqblxI_yQCN&s=10" alt="Auriculares Gamer HyperX Cloud II"/>
-                </figure>
-                <span class="product-tag">Accesorios</span>
-                <h3 class="product-title">HyperX Cloud II</h3>
-                <p class="product-desc">Audio envolvente virtual 7.1 con máxima comodidad de espuma viscoelástica.</p>
-                <div class="product-footer">
-                    <span class="product-price">$79.990</span>
-                    <button class="btn-add-cart" onclick="agregarProductoAlCarrito('AC002')">Añadir</button>
-                </div>
-                </article>
-
-                <article class="product-card">
-                <figure>
-                    <img src="https://www.weplay.cl/pub/media/wysiwyg/PRODUCTOS/IMAGENES/PLAYSTATION/711719570820_2.jpg" alt="Consola PlayStation 5 de Sony"/>
-                </figure>
-                <span class="product-tag">Consolas</span>
-                <h3 class="product-title">PlayStation 5</h3>
-                <p class="product-desc">Gráficos 4K con trazado de rayos y retroalimentación háptica inmersiva.</p>
-                <div class="product-footer">
-                    <span class="product-price">$549.990</span>
-                    <button class="btn-add-cart" onclick="agregarProductoAlCarrito('CO001')">Añadir</button>
-                </div>
-                </article>
-
-                <article class="product-card">
-                <figure>
-                    <img src="https://rimage.ripley.cl/home.ripley/Attachment/WOP/1/2000408648833/full_image-2000408648833" alt="PC Gamer ASUS ROG Strix"/>
-                </figure>
-                <span class="product-tag">Computadores</span>
-                <h3 class="product-title">PC ASUS ROG Strix</h3>
-                <p class="product-desc">Componentes de vanguardia para jugar sin límites competitivos.</p>
-                <div class="product-footer">
-                    <span class="product-price">$1.299.990</span>
-                    <button class="btn-add-cart" onclick="agregarProductoAlCarrito('CG001')">Añadir</button>
-                </div>
-                </article>
-
-                <article class="product-card">
-                <figure>
-                    <img src="https://m.media-amazon.com/images/I/41wKF+jkOAL._AC_.jpg" alt="Silla Gamer Secretlab Titan"/>
-                </figure>
-                <span class="product-tag">Sillas Gamers</span>
-                <h3 class="product-title">Secretlab Titan</h3>
-                <p class="product-desc">Ergonomía superior diseñada para sesiones intensas de juego.</p>
-                <div class="product-footer">
-                    <span class="product-price">$349.990</span>
-                    <button class="btn-add-cart" onclick="agregarProductoAlCarrito('SG001')">Añadir</button>
-                </div>
-                </article>
-
-                <article class="product-card">
-                <figure>
-                    <img src="https://http2.mlstatic.com/D_NQ_NP_913004-MLA99443804514_112025-O.webp" alt="Mouse Gamer Logitech G502 HERO"/>
-                </figure>
-                <span class="product-tag">Mouse</span>
-                <h3 class="product-title">Logitech G502 HERO</h3>
-                <p class="product-desc">Sensor de alta precisión de 25.600 DPI con 11 botones personalizables.</p>
-                <div class="product-footer">
-                    <span class="product-price">$49.990</span>
-                    <button class="btn-add-cart" onclick="agregarProductoAlCarrito('MS001')">Añadir</button>
-                </div>
-                </article>
+              <div className="form-group">
+                <label htmlFor="admin-precio">Valor ($)</label>
+                <input
+                  type="number"
+                  id="admin-precio"
+                  name="precio"
+                  min="1"
+                  placeholder="Ej: 49990"
+                  value={form.precio}
+                  onChange={handleChange}
+                />
+              </div>
             </div>
-            </section>
-        </main>
 
-    </>
+            <div className="admin-form-actions">
+              <button type="submit" className="btn-submit">
+                {editandoId ? 'Guardar cambios' : 'Agregar producto'}
+              </button>
+              {editandoId && (
+                <button type="button" className="btn-cancel" onClick={resetFormulario}>
+                  Cancelar
+                </button>
+              )}
+            </div>
+          </form>
+        </section>
+      )}
+    </main>
+  );
 }
 
 export default Inicio;

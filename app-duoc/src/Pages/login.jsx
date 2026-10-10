@@ -15,8 +15,7 @@ function Login() {
     contrasena: '',
   });
   const [errores, setErrores] = useState({});
-  // alerta = { tipo: 'success' | 'error', texto: string } | null
-  // Si venimos del registro, arranca mostrando el mensaje de éxito.
+
   const [alerta, setAlerta] = useState(() =>
     registroExitoso
       ? { tipo: 'success', texto: '¡Cuenta creada con éxito! Ahora puedes iniciar sesión.' }
