@@ -297,7 +297,7 @@ body {
   border: 1px solid var(--border-color);
   border-radius: 8px;
   width: 100%;
-  max-width: 520px;
+  max-width: 650px;
   padding: 2.5rem;
   box-shadow: 0 10px 25px rgba(0,0,0,0.5);
 }
@@ -417,9 +417,10 @@ body {
 }
 
 .form-row {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 1rem;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+    justify-content: center;
 }
 
 .btn-submit {
