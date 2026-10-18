@@ -1,119 +1,93 @@
-# 🎮 Level-Up Gamer — E-Commerce Web Application (React Migration)
+# Level-Up Gamer (React) 🎮🕹️
 
-Plataforma web de comercio electrónico orientada al mundo gamer (videojuegos, consolas, componentes y accesorios). 
+Bienvenido a la versión modernizada de **Level-Up Gamer**, una plataforma web de comercio electrónico orientada a la venta de videojuegos, consolas y periféricos gaming. 
 
-Este repositorio documenta la **modernización y migración arquitectónica** de un sitio web estático tradicional (HTML5, CSS3 y Vanilla JavaScript) hacia una **Single Page Application (SPA) modular desarrollada con React**, optimizando la reutilización de componentes, la reactividad del estado y la experiencia de usuario.
+Este proyecto representa la **migración y evolución desde una arquitectura web tradicional en HTML5/CSS/JavaScript estático hacia una Single Page Application (SPA) modular construida con React**.
 
 ---
 
 ## 👨‍💻 Autor y Desarrollador
-
-* **Luis Torres**  
-  *Estudiante de Ingeniería en Informática — Duoc UC*
-
----
-
-## 📌 Contexto de la Migración
-
-El proyecto inicial consistía en múltiples páginas HTML estáticas con estilos globales y scripts tradicionales que manipulaban directamente el Document Object Model (DOM). Para elevar la escalabilidad del sistema y adoptar estándares modernos de la industria, se rediseñó bajo el ecosistema de **React**:
-
-| Criterio | Versión Original (HTML / CSS / JS) | Versión Migrada (React) |
-| :--- | :--- | :--- |
-| **Arquitectura** | Multipage (archivos `.html` independientes) | Single Page Application (SPA) desacoplada y modular |
-| **Manipulación de interfaz** | Mutaciones manuales con `document.querySelector` | Renderizado declarativo con Virtual DOM y JSX |
-| **Gestión de estado** | Variables globales en archivos `.js` dispersos | Estado reactivo con React Hooks (`useState`, `useEffect`) |
-| **Reutilización de interfaz** | Código HTML duplicado en cabeceras y tarjetas | Componentes reutilizables (`Navbar`, `ProductCard`, `Footer`, etc.) |
-| **Navegación** | Recarga completa del navegador por página | Navegación fluida del lado del cliente (Client-Side Routing) |
+* **Desarrollador:** Luis Torres
+* **Perfil:** Estudiante de Ingeniería en Informática en **Duoc UC**
 
 ---
 
-## 🚀 Funcionalidades Principales
+## 📌 Contexto del Proyecto y Objetivos de la Migración
 
-* **Catálogo Dinámico de Productos:** Renderizado reactivo de consolas, accesorios, periféricos y juegos.
-* **Carrito de Compras:** Manejo de estado para añadir/remover artículos y cálculo reactivo de subtotales y totales.
-* **Diseño Responsivo:** Adaptabilidad para pantallas de escritorio, tablets y smartphones.
-* **Formularios Controlados:** Formularios de contacto y registro adaptados al ciclo de vida de React con validación de entradas.
-* **Estructura Escalable:** Separación de componentes reutilizables, páginas principales y recursos multimedia.
+El proyecto original estaba desarrollado con estructura de páginas HTML tradicionales enlazadas mediante navegación estándar. El objetivo principal de la migración fue mejorar la mantenibilidad, escalabilidad, rendimiento y experiencia de usuario (UX/UI), aprovechando el ecosistema de componentes de **React**.
 
----
-
-## 🛠️ Tecnologías y Herramientas
-
-* **Frontend:** [React](https://react.dev/)
-* **Lenguajes:** JavaScript (ES6+), JSX, HTML5 Semántico, CSS3
-* **Entorno de ejecución y paquetes:** [Node.js](https://nodejs.org/) & npm
-* **Control de versiones:** Git & GitHub
+### 🔄 Principales cambios implementados en la migración:
+1. **Arquitectura basada en Componentes:** Desacoplamiento de vistas estáticas en componentes reutilizables (Navbar, Footer, Tarjetas de Productos, Carrito de Compras, etc.).
+2. **Enrutamiento del lado del cliente (SPA):** Navegación fluida y rápida sin recargas completas de la página al cambiar de vista.
+3. **Manejo reactivo de estado:** Gestión del catálogo de productos, filtros por categoría y flujo del carrito de compras mediante hooks de estado de React (`useState`, `useEffect`).
+4. **Optimización de Estilos y Recursos:** Adaptación de las hojas de estilo y assets visuales a la estructura modular de la aplicación.
+5. **Control de Versiones y Limpieza:** Reorganización del repositorio bajo el control de versiones con Git.
 
 ---
 
-## 📂 Estructura del Repositorio
+## 🚀 Tecnologías Utilizadas
+
+* **React:** Biblioteca principal para la construcción de interfaces de usuario interactivas y modulares.
+* **JavaScript (ES6+):** Lógica del cliente, manipulación reactiva de datos y gestión del flujo del carrito de compras.
+* **HTML5 & CSS3:** Estructura semántica moderna y diseño adaptable (*responsive design*).
+* **Git & GitHub:** Control de versiones, historial de desarrollo y despliegue del repositorio.
+
+---
+
+## 📂 Estructura General del Proyecto
 
 ```text
 Level-Up-Gamer_React/
-├── public/                 # Archivos públicos estáticos e index.html
+├── public/                 # Archivos públicos estáticos y template HTML base
 ├── src/
-│   ├── assets/             # Imágenes, logos, banners e iconos
-│   ├── components/         # Componentes reutilizables de UI
-│   │   ├── Navbar/         # Barra de navegación principal
-│   │   ├── Footer/         # Pie de página informativo
-│   │   ├── Cart/           # Módulo interactivo del carrito
-│   │   └── ProductCard/    # Tarjeta individual de producto
-│   ├── pages/              # Vistas principales de la aplicación
-│   │   ├── Home/           # Portada y productos destacados
-│   │   ├── Catalog/        # Catálogo general con filtros
-│   │   └── Contact/        # Formulario de soporte y contacto
-│   ├── App.jsx             # Componente raíz de la aplicación
-│   ├── main.jsx (o index.js)# Punto de entrada de renderizado React
-│   └── index.css           # Estilos globales y normalización visual
-├── package.json            # Dependencias y scripts de ejecución
+│   ├── assets/             # Imágenes, iconos y recursos multimedia
+│   ├── components/         # Componentes reutilizables (Navbar, Cards, Modales, etc.)
+│   ├── pages/              # Vistas principales (Inicio, Catálogo, Detalle, Carrito, etc.)
+│   ├── App.jsx             # Componente raíz y definición de rutas
+│   ├── main.jsx / index.js # Punto de entrada de la aplicación
+│   └── index.css           # Estilos globales y utilidades
+├── package.json            # Dependencias y scripts del proyecto
 └── README.md               # Documentación general del proyecto
 ```
 
 ---
 
-## 💻 Instalación y Ejecución Local
+## ⚙️ Instalación y Puesta en Marcha
 
-Para clonar y poner en marcha el proyecto localmente, sigue estos pasos:
+Para clonar y ejecutar este proyecto en tu entorno local, sigue estos pasos:
 
-### 1. Clonar el repositorio
-```bash
-git clone https://github.com/TU-USUARIO/Level-Up-Gamer_React.git
-cd Level-Up-Gamer_React
-```
+1. **Clonar el repositorio:**
+   ```bash
+   git clone https://github.com/<tu-usuario>/Level-Up-Gamer_React.git
+   cd Level-Up-Gamer_React
+   ```
 
-### 2. Instalar dependencias
-Comprueba tener instalado [Node.js](https://nodejs.org/) (versión 16.x o superior).
-```bash
-npm install
-```
+2. **Instalar las dependencias:**
+   ```bash
+   npm install
+   ```
 
-### 3. Iniciar el servidor de desarrollo
-Si el proyecto fue creado con Vite:
-```bash
-npm run dev
-```
-*(Si usas Create React App, ejecuta `npm start`)*
+3. **Iniciar el servidor de desarrollo:**
+   ```bash
+   npm start
+   # o bien, si estás utilizando Vite:
+   # npm run dev
+   ```
 
-Luego abre la dirección local indicada en la terminal (comúnmente `http://localhost:5173` o `http://localhost:3000`).
-
-### 4. Generar la compilación para producción
-```bash
-npm run build
-```
+4. **Abrir en el navegador:**
+   Visita `http://localhost:3000` (o `http://localhost:5173` si usas Vite) para interactuar con la aplicación.
 
 ---
 
-## 🔄 Desafíos Técnicos Resueltos
+## 📈 Próximas Mejoras (Roadmap)
 
-1. **Transformación de Marcado a JSX:** Corrección de atributos HTML (`class` a `className`, etiquetas autocontenidas como `<img />` e `<input />`).
-2. **Refactorización de Lógica Vanilla:** Eliminación de eventos de escucha manuales (`addEventListener`) en favor de manejadores declarativos (`onClick`, `onChange`, `onSubmit`).
-3. **Persistencia y Reactividad:** Migración de datos temporales hacia estados de React y almacenamiento local (`localStorage`) para preservar la sesión del usuario y el carrito.
+- [ ] Conexión a una API REST backend para la persistencia de usuarios y órdenes de compra.
+- [ ] Implementación de autenticación de clientes y panel de administración para gestión de inventario.
 
 ---
+*Desarrollado  por **Luis Torres** – Estudiante de Ingeniería en Informática, Duoc UC.*
 
-## 📄 Licencia y Propósito
 
-Proyecto académico y de portafolio profesional desarrollado para demostrar habilidades de desarrollo frontend moderno y migración de código legado.
 
 Comandos importantes
 
