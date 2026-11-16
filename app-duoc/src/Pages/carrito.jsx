@@ -1,7 +1,8 @@
+import { useEffect, useState, useSyncExternalStore } from 'react';
 import '/src/index.css';
 
 import { getSession } from '../services/auth';
-import { formatearPrecio } from '../services/productos';
+import { cargarProductos, formatearPrecio } from '../services/productos';
 import {
   cambiarCantidad,
   eliminarDelCarrito,
@@ -10,10 +11,24 @@ import {
   obtenerTotales,
   subscribeCarrito,
 } from '../services/carrito';
-import { useSyncExternalStore } from 'react';
 
 function Carrito() {
   const items = useSyncExternalStore(subscribeCarrito, getCarritoItems);
+  const [cargando, setCargando] = useState(true);
+  const [errorCarga, setErrorCarga] = useState('');
+
+  // Trae el catálogo desde la API para conocer nombre, precio e imagen de cada ítem.
+  useEffect(() => {
+    let activo = true;
+    cargarProductos().then((resultado) => {
+      if (!activo) return;
+      if (!resultado.ok) setErrorCarga(resultado.error);
+      setCargando(false);
+    });
+    return () => {
+      activo = false;
+    };
+  }, []);
 
   const sesion = getSession();
   const aplicaDescuento = Boolean(sesion?.descuentoDuoc);
@@ -32,7 +47,17 @@ function Carrito() {
 
       <div className="cart-layout">
         <section className="cart-items-container" id="cart-items-wrapper">
-          {items.length === 0 ? (
+          {errorCarga && (
+            <p className="form-alert form-alert-error" role="alert">
+              {errorCarga}
+            </p>
+          )}
+
+          {cargando && items.length === 0 ? (
+            <p className="empty-cart-message" role="status">
+              Cargando tu carrito...
+            </p>
+          ) : items.length === 0 ? (
             <p className="empty-cart-message">
               Tu carrito está vacío. Agrega productos desde el{' '}
               <a href="/Inicio#catalogo">catálogo</a>.

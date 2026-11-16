@@ -1,116 +1,114 @@
-import { describe, it, expect, beforeEach } from 'vitest';
-import {
-  registerUser,
-  loginUser,
-  getSession,
-  logout,
-  esCorreoDuoc,
-  esCorreoAdmin,
-  findUserByEmail,
-} from '../src/services/auth';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
 
-describe('auth service', () => {
+import {
+  ROLES,
+  esAdmin,
+  esCorreoDuoc,
+  esRolAdmin,
+  getSession,
+  loginUser,
+  logout,
+  registerUser,
+  subscribe,
+} from '../src/services/auth';
+import { getToken } from '../src/services/sesion';
+import { crearFakeApi } from './helpers/fakeApi';
+
+const datosRegistro = (correo = 'nuevo@gmail.com') => ({
+  nombre: '  Nuevo Usuario ',
+  correo: ` ${correo.toUpperCase()} `,
+  contrasena: 'Clave123!',
+  telefono: ' 912345678 ',
+  region: 'Metropolitana de Santiago',
+  comuna: 'Santiago',
+});
+
+describe('auth service (ms-usuarios)', () => {
+  let api;
+
   beforeEach(() => {
     localStorage.clear();
-    window.dispatchEvent(new Event('storage'));
+    api = crearFakeApi();
   });
 
-  it('esCorreoDuoc detecta duoc', () => {
-    expect(esCorreoDuoc('alumno@duoc.cl')).toBe(true);
-    expect(esCorreoDuoc('algo@gmail.com')).toBe(false);
+  it('registra un usuario nuevo como CLIENTE con POST /api/auth/registro', async () => {
+    const resultado = await registerUser(datosRegistro());
+
+    expect(resultado.ok).toBe(true);
+    expect(resultado.user).toMatchObject({ correo: 'nuevo@gmail.com', rol: ROLES.CLIENTE });
+    expect(resultado.user.contrasena).toBeUndefined();
+
+    const peticion = api.peticiones.at(-1);
+    expect(peticion).toMatchObject({ metodo: 'POST', url: '/api/auth/registro' });
+    expect(peticion.body).toMatchObject({ nombre: 'Nuevo Usuario', correo: 'nuevo@gmail.com', telefono: '912345678' });
   });
 
-  it('esCorreoAdmin detecta duocuc', () => {
-    expect(esCorreoAdmin('admin@duocuc.cl')).toBe(true);
-    expect(esCorreoAdmin('alumno@duoc.cl')).toBe(false);
+  it('marca el descuento Duoc al registrar un correo @duoc.cl', async () => {
+    const resultado = await registerUser(datosRegistro('alumno@duoc.cl'));
+    expect(resultado.user.descuentoDuoc).toBe(true);
   });
 
-  it('registra usuario nuevo', () => {
-    const res = registerUser({
-      nombre: 'Juan Perez',
-      correo: 'juan@duoc.cl',
-      contrasena: 'Secret1!',
-      telefono: '',
-      region: 'Metropolitana de Santiago',
-      comuna: 'Santiago',
+  it('no permite registrar un correo duplicado (409)', async () => {
+    const resultado = await registerUser(datosRegistro('juan@gmail.com'));
+
+    expect(resultado).toEqual({
+      ok: false,
+      status: 409,
+      error: 'Ya existe una cuenta registrada con este correo electrónico.',
     });
-    expect(res.ok).toBe(true);
-    expect(res.user.correo).toBe('juan@duoc.cl');
-    expect(res.user.descuentoDuoc).toBe(true);
   });
 
-  it('no permite email duplicado', () => {
-    registerUser({
-      nombre: 'Juan Perez',
-      correo: 'juan@duoc.cl',
-      contrasena: 'Secret1!',
-      telefono: '',
-      region: 'Metropolitana de Santiago',
-      comuna: 'Santiago',
-    });
-    const res = registerUser({
-      nombre: 'Otro',
-      correo: 'juan@duoc.cl',
-      contrasena: 'Secret1!',
-      telefono: '',
-      region: 'Metropolitana de Santiago',
-      comuna: 'Santiago',
-    });
-    expect(res.ok).toBe(false);
+  it('informa si no hay conexión al registrar', async () => {
+    api.sinConexion = true;
+    const resultado = await registerUser(datosRegistro());
+
+    expect(resultado.ok).toBe(false);
+    expect(resultado.status).toBeNull();
+    expect(resultado.error).toMatch(/No se pudo conectar/);
   });
 
-  it('login correcto crea sesion', () => {
-    registerUser({
-      nombre: 'Juan Perez',
-      correo: 'juan@duoc.cl',
-      contrasena: 'Secret1!',
-      telefono: '',
-      region: 'Metropolitana de Santiago',
-      comuna: 'Santiago',
-    });
-    const res = loginUser('juan@duoc.cl', 'Secret1!');
-    expect(res.ok).toBe(true);
-    expect(getSession()).not.toBeNull();
-    expect(getSession().correo).toBe('juan@duoc.cl');
+  it('login correcto guarda el token y el usuario con su rol', async () => {
+    const callback = vi.fn();
+    const desuscribir = subscribe(callback);
+
+    const resultado = await loginUser('ADMIN@duocuc.cl', 'Admin123!');
+
+    expect(resultado.ok).toBe(true);
+    expect(resultado.user.rol).toBe(ROLES.ADMIN);
+    expect(getToken()).toMatch(/^token-1/);
+    expect(getSession()).toMatchObject({ correo: 'admin@duocuc.cl', rol: 'ADMIN' });
+    expect(esAdmin()).toBe(true);
+    expect(callback).toHaveBeenCalled();
+    desuscribir();
   });
 
-  it('login incorrecto falla', () => {
-    registerUser({
-      nombre: 'Juan Perez',
-      correo: 'juan@duoc.cl',
-      contrasena: 'Secret1!',
-      telefono: '',
-      region: 'Metropolitana de Santiago',
-      comuna: 'Santiago',
-    });
-    const res = loginUser('juan@duoc.cl', 'wrong');
-    expect(res.ok).toBe(false);
-  });
+  it('login incorrecto devuelve el mensaje del backend y no guarda sesión', async () => {
+    const resultado = await loginUser('juan@gmail.com', 'Incorrecta1!');
 
-  it('logout limpia sesion', () => {
-    registerUser({
-      nombre: 'Juan Perez',
-      correo: 'juan@duoc.cl',
-      contrasena: 'Secret1!',
-      telefono: '',
-      region: 'Metropolitana de Santiago',
-      comuna: 'Santiago',
-    });
-    loginUser('juan@duoc.cl', 'Secret1!');
-    logout();
+    expect(resultado).toEqual({ ok: false, error: 'Correo o contraseña incorrectos.' });
     expect(getSession()).toBeNull();
   });
 
-  it('findUserByEmail', () => {
-    registerUser({
-      nombre: 'Juan Perez',
-      correo: 'juan@duoc.cl',
-      contrasena: 'Secret1!',
-      telefono: '',
-      region: 'Metropolitana de Santiago',
-      comuna: 'Santiago',
-    });
-    expect(findUserByEmail('JUAN@duoc.cl')).not.toBeNull();
-    expect(findUserByEmail('nope@x.cl')).toBeNull();
+  it('logout elimina la sesión', async () => {
+    await loginUser('juan@gmail.com', 'Clave123!');
+    expect(getSession()).not.toBeNull();
+
+    logout();
+
+    expect(getSession()).toBeNull();
+    expect(esAdmin()).toBe(false);
+  });
+
+  it('esRolAdmin solo es verdadero para el rol ADMIN', () => {
+    expect(esRolAdmin({ rol: 'ADMIN' })).toBe(true);
+    expect(esRolAdmin({ rol: 'CLIENTE' })).toBe(false);
+    expect(esRolAdmin(null)).toBe(false);
+  });
+
+  it('esCorreoDuoc reconoce @duoc.cl y @duocuc.cl', () => {
+    expect(esCorreoDuoc('a@duoc.cl')).toBe(true);
+    expect(esCorreoDuoc('B@DUOCUC.CL')).toBe(true);
+    expect(esCorreoDuoc('c@gmail.com')).toBe(false);
+    expect(esCorreoDuoc(undefined)).toBe(false);
   });
 });

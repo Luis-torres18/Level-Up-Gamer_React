@@ -1,9 +1,12 @@
-import { getProductos, subscribeProductos } from './productos';
+import { getProductosCache, subscribeProductos } from './productos';
 
 const CART_KEY = 'lug_carrito';
 const CART_EVENT = 'lug-carrito-change';
 
 export const DESCUENTO_DUOC = 0.2; // 20% para correos Duoc.
+
+// El carrito guarda solo { id, cantidad } en localStorage; los datos del producto
+// (nombre, precio, imagen) se toman del catálogo que entrega la API.
 
 // Caché de snapshots (se invalida en cada escritura o cambio de catálogo).
 let itemsCache = null; // [{ producto, cantidad }]
@@ -38,7 +41,7 @@ function writeCart(items) {
 export function getCarritoItems() {
   if (itemsCache) return itemsCache;
 
-  const productos = getProductos();
+  const productos = getProductosCache();
   const porId = new Map(productos.map((producto) => [producto.id, producto]));
 
   itemsCache = readCart()
@@ -96,10 +99,13 @@ export function obtenerTotales(aplicaDescuentoDuoc) {
   return { subtotal, descuento, total: subtotal - descuento };
 }
 
-// El caché del carrito depende también del catálogo: si cambian los productos
-// (por el CRUD de administración) hay que invalidarlo.
+// El caché del carrito depende también del catálogo: cuando llega o cambia la lista
+// de productos (desde la API) se invalida y se avisa a los componentes.
 window.addEventListener('storage', invalidarCache);
-subscribeProductos(invalidarCache);
+subscribeProductos(() => {
+  invalidarCache();
+  notifyChange();
+});
 
 // Permite que componentes reaccionen a cambios del carrito.
 export function subscribeCarrito(callback) {

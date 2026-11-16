@@ -1,12 +1,14 @@
 import { useEffect, useRef, useState } from 'react';
+import { useLocation } from 'react-router';
 import '/src/index.css';
 
-import { getSession, esCorreoAdmin } from '../services/auth';
+import { getSession, esRolAdmin, subscribe } from '../services/auth';
 import {
   crearProducto,
   actualizarProducto,
   eliminarProducto,
-  getProductos,
+  cargarProductos,
+  getProductosCache,
   subscribeProductos,
   formatearPrecio,
 } from '../services/productos';
@@ -32,23 +34,62 @@ const ESTADO_INICIAL_FORM = {
 };
 
 function Inicio() {
-  const sesion = getSession();
-  const esAdmin = esCorreoAdmin(sesion?.correo);
+  const [usuario, setUsuario] = useState(getSession);
+  const esAdmin = esRolAdmin(usuario);
 
-  const [productos, setProductos] = useState(getProductos);
+  const [productos, setProductos] = useState(getProductosCache);
+  const [cargando, setCargando] = useState(true);
+  const [errorCarga, setErrorCarga] = useState('');
   const [form, setForm] = useState(ESTADO_INICIAL_FORM);
   const [editandoId, setEditandoId] = useState(null);
+  const [guardando, setGuardando] = useState(false);
   const [error, setError] = useState('');
   const [mensaje, setMensaje] = useState('');
   const toastTimer = useRef(null);
+  const { hash } = useLocation();
 
-  useEffect(() => subscribeProductos(() => setProductos(getProductos())), []);
+  useEffect(() => subscribe(() => setUsuario(getSession())), []);
+  useEffect(() => subscribeProductos(() => setProductos(getProductosCache())), []);
+
+  // GET /api/productos al entrar a la página.
+  const cargarCatalogo = async () => {
+    setCargando(true);
+    setErrorCarga('');
+    const resultado = await cargarProductos();
+    if (!resultado.ok) setErrorCarga(resultado.error);
+    setCargando(false);
+  };
+
+  useEffect(() => {
+    let activo = true;
+    cargarProductos().then((resultado) => {
+      if (!activo) return;
+      if (!resultado.ok) setErrorCarga(resultado.error);
+      setCargando(false);
+    });
+    return () => {
+      activo = false;
+    };
+  }, []);
+
+  // Si se llega con un ancla (ej: /Inicio#admin-productos), baja hasta esa sección
+  // cuando el catálogo ya cargó.
+  useEffect(() => {
+    if (cargando || !hash) return;
+    document.getElementById(hash.slice(1))?.scrollIntoView({ behavior: 'smooth' });
+  }, [cargando, hash]);
 
   // Muestra una notificación emergente que se oculta sola a los 2 segundos.
   const mostrarToast = (texto) => {
     if (toastTimer.current) clearTimeout(toastTimer.current);
     setMensaje(texto);
     toastTimer.current = setTimeout(() => setMensaje(''), 2000);
+  };
+
+  // Si la API respondió 401 (token vencido) la sesión se cierra y el panel desaparece:
+  // el aviso se muestra en la notificación para que el usuario sepa qué pasó.
+  const avisarSiSeCerroLaSesion = (texto) => {
+    if (!esRolAdmin(getSession())) mostrarToast(texto);
   };
 
   // Limpia el temporizador si el componente se desmonta.
@@ -66,15 +107,19 @@ function Inicio() {
     setError('');
   };
 
-  const handleSubmit = (event) => {
+  const handleSubmit = async (event) => {
     event.preventDefault();
+    if (guardando) return;
 
+    setGuardando(true);
     const resultado = editandoId
-      ? actualizarProducto(editandoId, form)
-      : crearProducto(form);
+      ? await actualizarProducto(editandoId, form)
+      : await crearProducto(form);
+    setGuardando(false);
 
     if (!resultado.ok) {
       setError(resultado.error);
+      avisarSiSeCerroLaSesion(resultado.error);
       return;
     }
 
@@ -99,11 +144,12 @@ function Inicio() {
     document.getElementById('admin-productos')?.scrollIntoView({ behavior: 'smooth' });
   };
 
-  const handleEliminar = (producto) => {
+  const handleEliminar = async (producto) => {
     if (!window.confirm(`¿Eliminar "${producto.nombre}" del catálogo?`)) return;
-    const resultado = eliminarProducto(producto.id);
+    const resultado = await eliminarProducto(producto.id);
     if (!resultado.ok) {
       setError(resultado.error);
+      avisarSiSeCerroLaSesion(resultado.error);
       return;
     }
     if (editandoId === producto.id) resetFormulario();
@@ -145,6 +191,25 @@ function Inicio() {
           <h2>CATÁLOGO DESTACADO</h2>
           <p>Equípate con los favoritos de nuestra comunidad</p>
         </div>
+
+        {cargando && productos.length === 0 && (
+          <p className="estado-carga" role="status">
+            Cargando catálogo...
+          </p>
+        )}
+
+        {errorCarga && (
+          <div className="estado-carga estado-error" role="alert">
+            <p>{errorCarga}</p>
+            <button type="button" className="btn-cancel" onClick={cargarCatalogo}>
+              Reintentar
+            </button>
+          </div>
+        )}
+
+        {!cargando && !errorCarga && productos.length === 0 && (
+          <p className="estado-carga">Aún no hay productos en el catálogo.</p>
+        )}
 
         <div className="products-grid">
           {productos.map((producto) => (
@@ -270,8 +335,8 @@ function Inicio() {
             </div>
 
             <div className="admin-form-actions">
-              <button type="submit" className="btn-submit">
-                {editandoId ? 'Guardar cambios' : 'Agregar producto'}
+              <button type="submit" className="btn-submit" disabled={guardando}>
+                {guardando ? 'Guardando...' : editandoId ? 'Guardar cambios' : 'Agregar producto'}
               </button>
               {editandoId && (
                 <button type="button" className="btn-cancel" onClick={resetFormulario}>

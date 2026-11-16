@@ -3,7 +3,7 @@ import { render, screen, fireEvent } from '@testing-library/react';
 import { MemoryRouter, Routes, Route, useLocation } from 'react-router';
 import Registro from '../src/Pages/registro';
 import { REGIONES } from '../src/data/regiones';
-import { registerUser, findUserByEmail } from '../src/services/auth';
+import { crearFakeApi } from './helpers/fakeApi';
 
 // Stub que expone el state con el que se navegó hacia /Login.
 function LoginStub() {
@@ -50,9 +50,12 @@ function llenarFormulario(overrides = {}) {
 }
 
 describe('pagina Registro', () => {
+  let api;
+
   beforeEach(() => {
     localStorage.clear();
     window.dispatchEvent(new Event('storage'));
+    api = crearFakeApi();
   });
 
   describe('renderizado', () => {
@@ -191,7 +194,7 @@ describe('pagina Registro', () => {
   });
 
   describe('envío del formulario', () => {
-    it('con el formulario vacío muestra todos los errores y no registra', () => {
+    it('con el formulario vacío muestra todos los errores y no llama a la API', () => {
       renderRegistro();
       fireEvent.click(screen.getByRole('button', { name: /Registrarse/i }));
       expect(screen.getByText(/El nombre es obligatorio/i)).toBeInTheDocument();
@@ -199,52 +202,49 @@ describe('pagina Registro', () => {
       expect(screen.getByText(/La contraseña es obligatoria/i)).toBeInTheDocument();
       expect(screen.getByText(/Debes seleccionar tu región/i)).toBeInTheDocument();
       expect(screen.queryByText('Pantalla de Login')).toBeNull();
+      expect(api.peticiones).toHaveLength(0);
     });
 
-    it('con datos válidos registra al usuario y navega al Login con el estado correcto', () => {
+    it('con datos válidos registra al usuario (POST) y navega al Login con el estado correcto', async () => {
       renderRegistro();
       const datos = llenarFormulario();
       fireEvent.click(screen.getByRole('button', { name: /Registrarse/i }));
+      expect(screen.getByRole('button', { name: /Creando cuenta/i })).toBeDisabled();
 
-      expect(screen.getByText('Pantalla de Login')).toBeInTheDocument();
+      expect(await screen.findByText('Pantalla de Login')).toBeInTheDocument();
       const state = JSON.parse(screen.getByTestId('login-state').textContent);
       expect(state.registrado).toBe(true);
       expect(state.correo).toBe(datos.correo);
 
-      const usuario = findUserByEmail(datos.correo);
-      expect(usuario).not.toBeNull();
-      expect(usuario.nombre).toBe(datos.nombre);
-      expect(usuario.comuna).toBe(datos.comuna);
+      const usuario = api.usuarios.find((item) => item.correo === datos.correo);
+      expect(usuario).toMatchObject({ nombre: datos.nombre, comuna: datos.comuna, rol: 'CLIENTE' });
     });
 
-    it('un correo repetido muestra error y no navega', () => {
-      registerUser({
-        nombre: 'Usuaria Previa',
-        correo: 'repetido@duoc.cl',
-        contrasena: 'Secret1!',
-        telefono: '',
-        region: REGIONES[0].region,
-        comuna: REGIONES[0].comunas[0],
-      });
+    it('un correo repetido muestra el error bajo el campo correo y no navega', async () => {
       renderRegistro();
-      llenarFormulario({
-        correo: 'repetido@duoc.cl',
-        confirmarCorreo: 'repetido@duoc.cl',
-      });
+      llenarFormulario({ correo: 'juan@gmail.com', confirmarCorreo: 'juan@gmail.com' });
       fireEvent.click(screen.getByRole('button', { name: /Registrarse/i }));
-      expect(screen.getByText(/Ya existe una cuenta registrada/i)).toBeInTheDocument();
+      expect(await screen.findByText(/Ya existe una cuenta registrada/i)).toBeInTheDocument();
+      expect(document.getElementById('error-correo')).toHaveTextContent(/Ya existe una cuenta/);
       expect(screen.queryByText('Pantalla de Login')).toBeNull();
     });
 
-    it('el correo @duoc.cl marca el descuento Duoc en el estado enviado', () => {
+    it('el correo @duoc.cl marca el descuento Duoc en el estado enviado', async () => {
       renderRegistro();
-      llenarFormulario({
-        correo: 'estudiante@duoc.cl',
-        confirmarCorreo: 'estudiante@duoc.cl',
-      });
+      llenarFormulario({ correo: 'estudiante@duoc.cl', confirmarCorreo: 'estudiante@duoc.cl' });
       fireEvent.click(screen.getByRole('button', { name: /Registrarse/i }));
+      await screen.findByText('Pantalla de Login');
       const state = JSON.parse(screen.getByTestId('login-state').textContent);
       expect(state.descuentoDuoc).toBe(true);
+    });
+
+    it('si el servidor no responde muestra una alerta general', async () => {
+      api.sinConexion = true;
+      renderRegistro();
+      llenarFormulario();
+      fireEvent.click(screen.getByRole('button', { name: /Registrarse/i }));
+      expect(await screen.findByText(/No se pudo conectar con el servidor/)).toBeInTheDocument();
+      expect(screen.queryByText('Pantalla de Login')).toBeNull();
     });
   });
 });

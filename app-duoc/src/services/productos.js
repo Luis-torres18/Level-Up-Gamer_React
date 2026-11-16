@@ -1,116 +1,59 @@
-const PRODUCTS_KEY = 'lug_productos';
+// Catálogo de productos. Los datos vienen del microservicio ms-productos (sin datos quemados).
+//   GET    /api/productos        -> listar (público)
+//   GET    /api/productos/{id}   -> obtener uno (público)
+//   POST   /api/productos        -> crear (ADMIN)
+//   PUT    /api/productos/{id}   -> actualizar (ADMIN)
+//   DELETE /api/productos/{id}   -> eliminar (ADMIN)
+
+import { apiProductos, obtenerMensajeError } from './api';
+
 const PRODUCTS_EVENT = 'lug-productos-change';
 
-const PRODUCTOS_INICIALES = [
-  {
-    id: 'JM001',
-    categoria: 'Juegos de Mesa',
-    nombre: 'Catan',
-    descripcion: 'Clásico juego de estrategia para colonizar la isla de Catan (3-4 jugadores).',
-    imagen: 'https://devirinvestments.s3.eu-west-1.amazonaws.com/img/catalog/product/8436017220100-1200-frontflat.jpg',
-    precio: 29990,
-  },
-  {
-    id: 'JM002',
-    categoria: 'Juegos de Mesa',
-    nombre: 'Carcassonne',
-    descripcion: 'Coloca losetas y domina fortalezas medievales con tu estrategia.',
-    imagen: 'https://www.geekz.cl/web/image/product.template/21455/image',
-    precio: 24990,
-  },
-  {
-    id: 'AC001',
-    categoria: 'Accesorios',
-    nombre: 'Control Xbox Series X',
-    descripcion: 'Agarre texturizado y precisión inalámbrica para Xbox y PC.',
-    imagen: 'https://i5.walmartimages.com/seo/Microsoft-Xbox-One-Bluetooth-Wireless-Controller-Black_b30e1557-556d-4638-a692-7b42cb425b52_1.3d21d0fb85ffc29ebc3435b2d1bd3d75.jpeg',
-    precio: 59990,
-  },
-  {
-    id: 'AC002',
-    categoria: 'Accesorios',
-    nombre: 'HyperX Cloud II',
-    descripcion: 'Audio envolvente virtual 7.1 con máxima comodidad de espuma viscoelástica.',
-    imagen: 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSdO6mRCcRglH7n3EMSCivY3XAlU0QezZArTzefhyhxrnk54EqblxI_yQCN&s=10',
-    precio: 79990,
-  },
-  {
-    id: 'CO001',
-    categoria: 'Consolas',
-    nombre: 'PlayStation 5',
-    descripcion: 'Gráficos 4K con trazado de rayos y retroalimentación háptica inmersiva.',
-    imagen: 'https://www.weplay.cl/pub/media/wysiwyg/PRODUCTOS/IMAGENES/PLAYSTATION/711719570820_2.jpg',
-    precio: 549990,
-  },
-  {
-    id: 'CG001',
-    categoria: 'Computadores',
-    nombre: 'PC ASUS ROG Strix',
-    descripcion: 'Componentes de vanguardia para jugar sin límites competitivos.',
-    imagen: 'https://rimage.ripley.cl/home.ripley/Attachment/WOP/1/2000408648833/full_image-2000408648833',
-    precio: 1299990,
-  },
-  {
-    id: 'SG001',
-    categoria: 'Sillas Gamers',
-    nombre: 'Secretlab Titan',
-    descripcion: 'Ergonomía superior diseñada para sesiones intensas de juego.',
-    imagen: 'https://m.media-amazon.com/images/I/41wKF+jkOAL._AC_.jpg',
-    precio: 349990,
-  },
-  {
-    id: 'MS001',
-    categoria: 'Mouse',
-    nombre: 'Logitech G502 HERO',
-    descripcion: 'Sensor de alta precisión de 25.600 DPI con 11 botones personalizables.',
-    imagen: 'https://http2.mlstatic.com/D_NQ_NP_913004-MLA99443804514_112025-O.webp',
-    precio: 49990,
-  },
-];
+// Última lista recibida de la API (la usa el carrito para mostrar nombre, precio e imagen).
+let productosCache = [];
 
 function notifyChange() {
   window.dispatchEvent(new Event(PRODUCTS_EVENT));
 }
 
-function readProducts() {
-  try {
-    const raw = localStorage.getItem(PRODUCTS_KEY);
-    const parsed = raw ? JSON.parse(raw) : null;
-    return Array.isArray(parsed) ? parsed : null;
-  } catch {
-    return null;
-  }
-}
-
-function writeProducts(products) {
-  localStorage.setItem(PRODUCTS_KEY, JSON.stringify(products));
+function setCache(productos) {
+  productosCache = productos;
   notifyChange();
 }
 
-export function getProductos() {
-  const stored = readProducts();
-  if (stored) return stored;
-  localStorage.setItem(PRODUCTS_KEY, JSON.stringify(PRODUCTOS_INICIALES));
-  return PRODUCTOS_INICIALES.map((producto) => ({ ...producto }));
+export function getProductosCache() {
+  return productosCache;
 }
 
-export function getProducto(id) {
-  return getProductos().find((producto) => producto.id === id) ?? null;
+export async function cargarProductos() {
+  try {
+    const { data } = await apiProductos.get('/api/productos');
+    setCache(Array.isArray(data) ? data : []);
+    return { ok: true, productos: productosCache };
+  } catch (error) {
+    return {
+      ok: false,
+      error: obtenerMensajeError(error, 'No se pudo cargar el catálogo de productos.'),
+    };
+  }
+}
+
+export async function getProducto(id) {
+  try {
+    const { data } = await apiProductos.get(`/api/productos/${id}`);
+    return { ok: true, producto: data };
+  } catch (error) {
+    return { ok: false, error: obtenerMensajeError(error, 'No se pudo obtener el producto.') };
+  }
 }
 
 export function getCategorias() {
-  const categorias = new Set(getProductos().map((producto) => producto.categoria));
+  const categorias = new Set(productosCache.map((producto) => producto.categoria));
   return [...categorias].sort((a, b) => a.localeCompare(b, 'es'));
 }
 
-function generarId() {
-  if (typeof crypto !== 'undefined' && crypto.randomUUID) {
-    return crypto.randomUUID();
-  }
-  return `P${Date.now()}${Math.floor(Math.random() * 1000)}`;
-}
-
-function normalizarProducto(datos, idExistente = null) {
+// Valida en el navegador antes de enviar (el backend vuelve a validar).
+export function normalizarProducto(datos) {
   const categoria = String(datos.categoria ?? '').trim();
   const nombre = String(datos.nombre ?? '').trim();
   const descripcion = String(datos.descripcion ?? '').trim();
@@ -128,57 +71,49 @@ function normalizarProducto(datos, idExistente = null) {
   }
 
   return {
-    producto: {
-      id: idExistente ?? generarId(),
-      categoria,
-      nombre,
-      descripcion,
-      imagen,
-      precio: Math.round(precio),
-    },
+    producto: { categoria, nombre, descripcion, imagen, precio: Math.round(precio) },
   };
 }
 
-export function crearProducto(datos) {
+export async function crearProducto(datos) {
   const resultado = normalizarProducto(datos);
   if (resultado.error) return { ok: false, error: resultado.error };
 
-  const productos = getProductos();
-  writeProducts([...productos, resultado.producto]);
-  return { ok: true, producto: resultado.producto };
+  try {
+    const { data } = await apiProductos.post('/api/productos', resultado.producto);
+    setCache([...productosCache, data]);
+    return { ok: true, producto: data };
+  } catch (error) {
+    return { ok: false, error: obtenerMensajeError(error, 'No se pudo crear el producto.') };
+  }
 }
 
-export function actualizarProducto(id, datos) {
-  const productos = getProductos();
-  const existente = productos.find((producto) => producto.id === id);
-  if (!existente) return { ok: false, error: 'El producto ya no existe en el catálogo.' };
-
-  const resultado = normalizarProducto(datos, id);
+export async function actualizarProducto(id, datos) {
+  const resultado = normalizarProducto(datos);
   if (resultado.error) return { ok: false, error: resultado.error };
 
-  writeProducts(
-    productos.map((producto) => (producto.id === id ? resultado.producto : producto)),
-  );
-  return { ok: true, producto: resultado.producto };
+  try {
+    const { data } = await apiProductos.put(`/api/productos/${id}`, resultado.producto);
+    setCache(productosCache.map((producto) => (producto.id === id ? data : producto)));
+    return { ok: true, producto: data };
+  } catch (error) {
+    return { ok: false, error: obtenerMensajeError(error, 'No se pudo actualizar el producto.') };
+  }
 }
 
-export function eliminarProducto(id) {
-  const productos = getProductos();
-  const restantes = productos.filter((producto) => producto.id !== id);
-  if (restantes.length === productos.length) {
-    return { ok: false, error: 'El producto ya no existe en el catálogo.' };
+export async function eliminarProducto(id) {
+  try {
+    await apiProductos.delete(`/api/productos/${id}`);
+    setCache(productosCache.filter((producto) => producto.id !== id));
+    return { ok: true };
+  } catch (error) {
+    return { ok: false, error: obtenerMensajeError(error, 'No se pudo eliminar el producto.') };
   }
-  writeProducts(restantes);
-  return { ok: true };
 }
 
 export function subscribeProductos(callback) {
   window.addEventListener(PRODUCTS_EVENT, callback);
-  window.addEventListener('storage', callback);
-  return () => {
-    window.removeEventListener(PRODUCTS_EVENT, callback);
-    window.removeEventListener('storage', callback);
-  };
+  return () => window.removeEventListener(PRODUCTS_EVENT, callback);
 }
 
 export function formatearPrecio(valor) {

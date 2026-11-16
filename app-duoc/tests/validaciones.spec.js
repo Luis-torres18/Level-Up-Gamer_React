@@ -76,4 +76,4 @@ describe('validaciones', () => {
     expect(validarComuna('')).not.toBe('');
     expect(validarComuna('Santiago')).toBe('');
   });
-});
+});

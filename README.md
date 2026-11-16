@@ -1,101 +1,71 @@
-# Level-Up Gamer (React) 🎮🕹️
+# Level-Up Gamer — Frontend (React + Vite)
 
-Bienvenido a la versión modernizada de **Level-Up Gamer**, una plataforma web de comercio electrónico orientada a la venta de videojuegos, consolas y periféricos gaming. 
+Single Page Application de la tienda **Level-Up Gamer**. Consume los 3 microservicios Spring Boot del backend con **axios** y se publica como sitio estático en **AWS S3**.
 
-Este proyecto representa la **migración y evolución desde una arquitectura web tradicional en HTML5/CSS/JavaScript estático hacia una Single Page Application (SPA) modular construida con React**.
+## Tecnologías
 
----
+- React 19 + React Router
+- axios (cliente HTTP con interceptores para el token JWT)
+- Vite (desarrollo y build)
+- Vitest + Testing Library (pruebas unitarias y cobertura)
 
-## 👨‍💻 Autor y Desarrollador
-* **Desarrollador:** Luis Torres
-* **Perfil:** Estudiante de Ingeniería en Informática en **Duoc UC**
+## Conexión con el backend
 
----
+| Servicio | Variable | Local | Qué usa el front |
+|---|---|---|---|
+| ms-productos | `VITE_API_PRODUCTOS_URL` | `http://localhost:8081` | `GET / POST / PUT / DELETE /api/productos` |
+| ms-usuarios | `VITE_API_USUARIOS_URL` | `http://localhost:8082` | `POST /api/auth/registro`, `POST /api/auth/login` |
+| ms-gestion-usuarios | `VITE_API_GESTION_URL` | `http://localhost:8083` | `GET / POST / PUT / DELETE /api/usuarios` |
 
-## 📌 Contexto del Proyecto y Objetivos de la Migración
+Archivos principales:
 
-El proyecto original estaba desarrollado con estructura de páginas HTML tradicionales enlazadas mediante navegación estándar. El objetivo principal de la migración fue mejorar la mantenibilidad, escalabilidad, rendimiento y experiencia de usuario (UX/UI), aprovechando el ecosistema de componentes de **React**.
+- `src/services/api.js`: crea un cliente axios por microservicio. Un interceptor agrega `Authorization: Bearer <token>` y, si la API responde 401, cierra la sesión.
+- `src/services/sesion.js`: guarda el token y los datos del usuario en `localStorage`.
+- `src/services/auth.js`: registro, login, logout y roles (`ADMIN` / `CLIENTE`).
+- `src/services/productos.js`: CRUD de productos contra la API (ya no hay productos escritos en el código).
+- `src/services/usuarios.js`: CRUD de usuarios para el administrador.
+- `src/Components/RutaProtegida.jsx`: exige sesión y, si se indica, un rol.
+- `src/Pages/AdminUsuarios.jsx`: pantalla de **Administración** (gestión de usuarios).
 
-### 🔄 Principales cambios implementados en la migración:
-1. **Arquitectura basada en Componentes:** Desacoplamiento de vistas estáticas en componentes reutilizables (Navbar, Footer, Tarjetas de Productos, Carrito de Compras, etc.).
-2. **Enrutamiento del lado del cliente (SPA):** Navegación fluida y rápida sin recargas completas de la página al cambiar de vista.
-3. **Manejo reactivo de estado:** Gestión del catálogo de productos, filtros por categoría y flujo del carrito de compras mediante hooks de estado de React (`useState`, `useEffect`).
-4. **Optimización de Estilos y Recursos:** Adaptación de las hojas de estilo y assets visuales a la estructura modular de la aplicación.
-5. **Control de Versiones y Limpieza:** Reorganización del repositorio bajo el control de versiones con Git.
+## Roles en la página
 
----
+| | Sin sesión | CLIENTE | ADMIN |
+|---|---|---|---|
+| Ver catálogo y usar el carrito | ✓ | ✓ | ✓ |
+| Descuento 20% (correo @duoc.cl / @duocuc.cl) | | ✓ | ✓ |
+| Crear, editar y eliminar productos (Inicio → Panel de administración) | | | ✓ |
+| Botón **Administración** → `/Admin/Usuarios`: ver, crear, editar (incluido el rol) y eliminar usuarios | | | ✓ |
 
-## 🚀 Tecnologías Utilizadas
+La ruta `/Admin/Usuarios` está protegida: sin sesión lleva al Login (y vuelve después de ingresar), y con rol CLIENTE muestra "Acceso denegado". Además, el backend rechaza con 401/403 cualquier llamada sin permisos.
 
-* **React:** Biblioteca principal para la construcción de interfaces de usuario interactivas y modulares.
-* **JavaScript (ES6+):** Lógica del cliente, manipulación reactiva de datos y gestión del flujo del carrito de compras.
-* **HTML5 & CSS3:** Estructura semántica moderna y diseño adaptable (*responsive design*).
-* **Git & GitHub:** Control de versiones, historial de desarrollo y despliegue del repositorio.
+## Ejecutar en local
 
----
+Primero levanta el backend (`docker compose up -d --build` en la carpeta `levelup-backend`). Luego:
 
-## 📂 Estructura General del Proyecto
-
-```text
-Level-Up-Gamer_React/
-├── public/                 # Archivos públicos estáticos y template HTML base
-├── src/
-│   ├── assets/             # Imágenes, iconos y recursos multimedia
-│   ├── components/         # Componentes reutilizables (Navbar, Cards, Modales, etc.)
-│   ├── pages/              # Vistas principales (Inicio, Catálogo, Detalle, Carrito, etc.)
-│   ├── App.jsx             # Componente raíz y definición de rutas
-│   ├── main.jsx / index.js # Punto de entrada de la aplicación
-│   └── index.css           # Estilos globales y utilidades
-├── package.json            # Dependencias y scripts del proyecto
-└── README.md               # Documentación general del proyecto
+```bash
+npm install
+npm run dev
 ```
 
----
+Abre <http://localhost:5173>. Para entrar como administrador usa `admin@duocuc.cl` / `Admin123!` (lo crea el script de la base de datos).
 
-## ⚙️ Instalación y Puesta en Marcha
+## Pruebas y cobertura
 
-Para clonar y ejecutar este proyecto en tu entorno local, sigue estos pasos:
+```bash
+npm test                 # modo observador
+npm run test:coverage    # una pasada + informe de cobertura
+```
 
-1. **Clonar el repositorio:**
-   ```bash
-   git clone https://github.com/<tu-usuario>/Level-Up-Gamer_React.git
-   cd Level-Up-Gamer_React
-   ```
+El informe HTML queda en `coverage/index.html`. Las pruebas no necesitan el backend: `tests/helpers/fakeApi.js` reemplaza el adaptador de axios por un backend en memoria con las mismas reglas que los microservicios (roles, 401, 403, 404 y 409), así se prueban los servicios, los interceptores y las pantallas tal como funcionan con la API real.
 
-2. **Instalar las dependencias:**
-   ```bash
-   npm install
-   ```
+## Publicar en AWS S3
 
-3. **Iniciar el servidor de desarrollo:**
-   ```bash
-   npm start
-   # o bien, si estás utilizando Vite:
-   # npm run dev
-   ```
+1. Copia `.env.example` como `.env.production` y reemplaza `<ELASTIC_IP>` por la IP elástica de la EC2.
+2. `npm run build`: genera `dist/`.
+3. Crea un bucket, activa **Static website hosting** con `index.html` como documento de índice y de error, quita el bloqueo de acceso público y agrega la política de lectura pública.
+4. Sube el **contenido** de `dist/` (o usa `aws s3 sync dist/ s3://<tu-bucket> --delete`).
+5. Agrega la URL del bucket a `CORS_ORIGINS` en el `.env` del backend.
 
-4. **Abrir en el navegador:**
-   Visita `http://localhost:3000` (o `http://localhost:5173` si usas Vite) para interactuar con la aplicación.
+El paso a paso completo (EC2 + S3) está en el README del backend.
 
----
-
-## 📈 Próximas Mejoras (Roadmap)
-
-- [ ] Conexión a una API REST backend para la persistencia de usuarios y órdenes de compra.
-- [ ] Implementación de autenticación de clientes y panel de administración para gestión de inventario.
-
----
-*Desarrollado  por **Luis Torres** – Estudiante de Ingeniería en Informática, Duoc UC.*
-
-
-
-Comandos importantes
-
-Instalación/Ejecucion
-1- npm install
-2- npm run dev
-3- npm run build
-
-Pruebas Unitarias 
-1- npm run test -- --run
-2- npm run test:coverage
+> `vite.config.js` usa `base: "/"` para que las rutas anidadas como `/Admin/Usuarios` carguen bien en S3 al recargar la página.

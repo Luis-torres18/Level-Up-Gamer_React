@@ -42,6 +42,7 @@ function Registro() {
   const [form, setForm] = useState(ESTADO_INICIAL);
   const [errores, setErrores] = useState({});
   const [mensaje, setMensaje] = useState('');
+  const [cargando, setCargando] = useState(false);
 
   const comunasDisponibles = useMemo(() => {
     const seleccionada = REGIONES.find((item) => item.region === form.region);
@@ -100,13 +101,15 @@ function Registro() {
     return Object.values(nuevosErrores).every((error) => !error);
   };
 
-  const handleSubmit = (event) => {
+  const handleSubmit = async (event) => {
     event.preventDefault();
+    if (cargando) return;
     setMensaje('');
 
     if (!validarFormulario()) return;
 
-    const resultado = registerUser({
+    setCargando(true);
+    const resultado = await registerUser({
       nombre: form.nombre,
       correo: form.correo,
       contrasena: form.contrasena,
@@ -115,8 +118,15 @@ function Registro() {
       comuna: form.comuna,
     });
 
+    setCargando(false);
+
     if (!resultado.ok) {
-      setErrores((prev) => ({ ...prev, correo: resultado.error }));
+      // 409: el correo ya existe -> se muestra bajo el campo correo.
+      if (resultado.status === 409) {
+        setErrores((prev) => ({ ...prev, correo: resultado.error }));
+      } else {
+        setMensaje(resultado.error);
+      }
       return;
     }
 
@@ -317,8 +327,8 @@ function Registro() {
             </div>
           </div>
 
-          <button type="submit" className="btn-submit">
-            Registrarse
+          <button type="submit" className="btn-submit" disabled={cargando}>
+            {cargando ? 'Creando cuenta...' : 'Registrarse'}
           </button>
 
           <p className="form-footer-link">

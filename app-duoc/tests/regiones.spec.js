@@ -14,4 +14,4 @@ describe('regiones', () => {
       expect(r.comunas.length).toBeGreaterThan(0);
     });
   });
-});
+});

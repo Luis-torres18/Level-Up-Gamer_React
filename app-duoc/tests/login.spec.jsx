@@ -2,7 +2,8 @@ import { describe, it, expect, beforeEach } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import { MemoryRouter, Routes, Route } from 'react-router';
 import Login from '../src/Pages/login';
-import { registerUser } from '../src/services/auth';
+import { getSession } from '../src/services/auth';
+import { crearFakeApi } from './helpers/fakeApi';
 
 // Stub que permite verificar si la navegación hacia /Inicio ocurrió.
 function InicioStub() {
@@ -20,17 +21,6 @@ function renderLogin(initialEntries = ['/Login']) {
   );
 }
 
-function registrarUsuario() {
-  registerUser({
-    nombre: 'Juan Perez',
-    correo: 'juan@duoc.cl',
-    contrasena: 'Secret1!',
-    telefono: '',
-    region: 'Metropolitana de Santiago',
-    comuna: 'Santiago',
-  });
-}
-
 function completarFormulario(correo, contrasena) {
   fireEvent.change(screen.getByLabelText('Correo Electrónico'), {
     target: { name: 'correo', value: correo },
@@ -41,9 +31,12 @@ function completarFormulario(correo, contrasena) {
 }
 
 describe('pagina Login', () => {
+  let api;
+
   beforeEach(() => {
     localStorage.clear();
     window.dispatchEvent(new Event('storage'));
+    api = crearFakeApi();
   });
 
   describe('renderizado', () => {
@@ -114,57 +107,83 @@ describe('pagina Login', () => {
   });
 
   describe('envío del formulario', () => {
-    it('con campos vacíos muestra ambos errores y no navega', () => {
+    it('con campos vacíos muestra ambos errores y no llama a la API', () => {
       renderLogin();
       fireEvent.click(screen.getByRole('button', { name: /Ingresar a mi cuenta/i }));
       expect(screen.getByText(/El correo electrónico es obligatorio/i)).toBeInTheDocument();
       expect(screen.getByText(/La contraseña es obligatoria/i)).toBeInTheDocument();
       expect(screen.queryByText('Pantalla de Inicio')).toBeNull();
+      expect(api.peticiones).toHaveLength(0);
     });
 
-    it('con un correo inexistente muestra alerta de cuenta no registrada', () => {
+    it('con un correo inexistente muestra el mensaje del backend', async () => {
       renderLogin();
       completarFormulario('noexiste@duoc.cl', 'Secret1!');
       fireEvent.click(screen.getByRole('button', { name: /Ingresar a mi cuenta/i }));
-      expect(screen.getByText(/No existe una cuenta registrada/i)).toBeInTheDocument();
+      expect(await screen.findByText('Correo o contraseña incorrectos.')).toBeInTheDocument();
       expect(screen.queryByText('Pantalla de Inicio')).toBeNull();
     });
 
-    it('con contraseña incorrecta muestra alerta de contraseña inválida', () => {
-      registrarUsuario();
+    it('con contraseña incorrecta no inicia sesión', async () => {
       renderLogin();
-      completarFormulario('juan@duoc.cl', 'ClaveErronea1!');
+      completarFormulario('juan@gmail.com', 'ClaveErronea1!');
       fireEvent.click(screen.getByRole('button', { name: /Ingresar a mi cuenta/i }));
-      expect(screen.getByText(/La contraseña es incorrecta/i)).toBeInTheDocument();
-      expect(screen.queryByText('Pantalla de Inicio')).toBeNull();
+      expect(await screen.findByText('Correo o contraseña incorrectos.')).toBeInTheDocument();
+      expect(getSession()).toBeNull();
     });
 
-    it('escribir tras una alerta de error la elimina', () => {
+    it('escribir tras una alerta de error la elimina', async () => {
       renderLogin();
       completarFormulario('noexiste@duoc.cl', 'Secret1!');
       fireEvent.click(screen.getByRole('button', { name: /Ingresar a mi cuenta/i }));
-      expect(screen.getByText(/No existe una cuenta registrada/i)).toBeInTheDocument();
+      expect(await screen.findByText('Correo o contraseña incorrectos.')).toBeInTheDocument();
       fireEvent.change(screen.getByLabelText('Correo Electrónico'), {
         target: { name: 'correo', value: 'otro@duoc.cl' },
       });
-      expect(screen.queryByText(/No existe una cuenta registrada/i)).toBeNull();
+      expect(screen.queryByText('Correo o contraseña incorrectos.')).toBeNull();
     });
 
-    it('con credenciales válidas navega a Inicio', () => {
-      registrarUsuario();
+    it('con credenciales válidas guarda la sesión con el rol y navega a Inicio', async () => {
       renderLogin();
-      completarFormulario('juan@duoc.cl', 'Secret1!');
+      completarFormulario('juan@gmail.com', 'Clave123!');
       fireEvent.click(screen.getByRole('button', { name: /Ingresar a mi cuenta/i }));
-      expect(screen.getByText('Pantalla de Inicio')).toBeInTheDocument();
-      expect(screen.queryByText(/La contraseña es incorrecta/i)).toBeNull();
+      expect(screen.getByRole('button', { name: /Ingresando/i })).toBeDisabled();
+      expect(await screen.findByText('Pantalla de Inicio')).toBeInTheDocument();
+      expect(getSession()).toMatchObject({ correo: 'juan@gmail.com', rol: 'CLIENTE' });
     });
 
-    it('acepta el correo en mayúsculas porque se normaliza', () => {
-      registrarUsuario();
+    it('acepta el correo en mayúsculas porque se normaliza', async () => {
       renderLogin();
-      completarFormulario('JUAN@DUOC.CL', 'Secret1!');
+      completarFormulario('JUAN@GMAIL.COM', 'Clave123!');
       fireEvent.click(screen.getByRole('button', { name: /Ingresar a mi cuenta/i }));
-      expect(screen.getByText('Pantalla de Inicio')).toBeInTheDocument();
+      expect(await screen.findByText('Pantalla de Inicio')).toBeInTheDocument();
+    });
+
+    it('si viene de una ruta protegida muestra el aviso y vuelve a ella al ingresar', async () => {
+      render(
+        <MemoryRouter
+          initialEntries={[
+            { pathname: '/Login', state: { desde: '/Admin/Usuarios', aviso: 'Debes iniciar sesión.' } },
+          ]}
+        >
+          <Routes>
+            <Route path="/Login" element={<Login />} />
+            <Route path="/Admin/Usuarios" element={<p>Pantalla Admin</p>} />
+          </Routes>
+        </MemoryRouter>,
+      );
+      expect(screen.getByText('Debes iniciar sesión.')).toBeInTheDocument();
+      completarFormulario('admin@duocuc.cl', 'Admin123!');
+      fireEvent.click(screen.getByRole('button', { name: /Ingresar a mi cuenta/i }));
+      expect(await screen.findByText('Pantalla Admin')).toBeInTheDocument();
+    });
+
+    it('avisa si no se puede conectar con el servidor', async () => {
+      api.sinConexion = true;
+      renderLogin();
+      completarFormulario('juan@gmail.com', 'Clave123!');
+      fireEvent.click(screen.getByRole('button', { name: /Ingresar a mi cuenta/i }));
+      expect(await screen.findByText(/No se pudo conectar con el servidor/)).toBeInTheDocument();
     });
   });
 });

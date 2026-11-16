@@ -16,11 +16,15 @@ function Login() {
   });
   const [errores, setErrores] = useState({});
 
-  const [alerta, setAlerta] = useState(() =>
-    registroExitoso
-      ? { tipo: 'success', texto: '¡Cuenta creada con éxito! Ahora puedes iniciar sesión.' }
-      : null,
-  );
+  const [cargando, setCargando] = useState(false);
+
+  const [alerta, setAlerta] = useState(() => {
+    if (registroExitoso) {
+      return { tipo: 'success', texto: '¡Cuenta creada con éxito! Ahora puedes iniciar sesión.' };
+    }
+    if (location.state?.aviso) return { tipo: 'error', texto: location.state.aviso };
+    return null;
+  });
 
   const validarCampo = (campo, valor) => {
     switch (campo) {
@@ -48,8 +52,9 @@ function Login() {
     setErrores((prev) => ({ ...prev, [name]: validarCampo(name, value) }));
   };
 
-  const handleSubmit = (event) => {
+  const handleSubmit = async (event) => {
     event.preventDefault();
+    if (cargando) return;
 
     const nuevosErrores = {
       correo: validarCampo('correo', form.correo),
@@ -58,14 +63,17 @@ function Login() {
     setErrores(nuevosErrores);
     if (Object.values(nuevosErrores).some((error) => error)) return;
 
-    const resultado = loginUser(form.correo, form.contrasena);
+    setCargando(true);
+    const resultado = await loginUser(form.correo, form.contrasena);
+    setCargando(false);
 
     if (!resultado.ok) {
       setAlerta({ tipo: 'error', texto: resultado.error });
       return;
     }
 
-    navigate('/Inicio');
+    // Si venía de una página protegida, vuelve a ella; si no, al inicio.
+    navigate(location.state?.desde ?? '/Inicio', { replace: true });
   };
 
   const claseInput = (campo) => (errores[campo] ? 'input-error' : '');
@@ -129,8 +137,8 @@ function Login() {
             </span>
           </div>
 
-          <button type="submit" className="btn-submit">
-            Ingresar a mi cuenta
+          <button type="submit" className="btn-submit" disabled={cargando}>
+            {cargando ? 'Ingresando...' : 'Ingresar a mi cuenta'}
           </button>
 
           <p className="form-footer-link">
